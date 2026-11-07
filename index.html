@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cousins</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--ink:#1f2933;--mut:#6b7885;--acc:#3d7a8a;--mine:#d8ecf0;--line:#e1e6ea;color-scheme:light}
+@media(prefers-color-scheme:dark){:root{--bg:#12171b;--card:#1b2227;--ink:#e6ecef;--mut:#8b98a3;--acc:#5fb0c4;--mine:#23424b;--line:#2a343b;color-scheme:dark}}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{font:16px system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--ink)}
+#app{height:100%;max-width:640px;margin:0 auto;display:flex;flex-direction:column;background:var(--bg);padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+header{display:flex;align-items:center;gap:8px;padding:12px 14px;background:var(--card);border-bottom:1px solid var(--line)}
+header h1{flex:1;font-size:18px;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+button{font:inherit;border:0;border-radius:10px;padding:9px 14px;background:var(--acc);color:#fff;cursor:pointer}
+button.g{background:transparent;color:var(--acc);padding:6px 10px}button.d{background:#c0504d}
+input,select{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:0}
+.box{margin:auto;width:min(360px,90%);display:flex;flex-direction:column;gap:12px;text-align:center}
+.err{color:#c0504d;min-height:1.2em;font-size:14px}.mut{color:var(--mut);font-size:13px}
+.list{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:8px}
+.row{background:var(--card);border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer}
+.msgs{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:6px}
+.m{max-width:80%;padding:8px 11px;border-radius:14px;background:var(--card);align-self:flex-start;user-select:none;-webkit-user-select:none;word-wrap:break-word}
+.m.me{align-self:flex-end;background:var(--mine)}.m img{max-width:100%;border-radius:10px;display:block;margin-bottom:4px}
+.m .q{border-left:3px solid var(--acc);padding-left:7px;margin-bottom:4px;color:var(--mut);font-size:13px}
+.m .s{font-size:12px;color:var(--acc);font-weight:600}.m .t{font-size:11px;color:var(--mut);text-align:right;margin-top:2px}
+.bar{display:flex;gap:6px;padding:8px;background:var(--card);border-top:1px solid var(--line);align-items:center}
+.bar input[type=text]{flex:1}.rb{padding:6px 12px;background:var(--card);font-size:13px;color:var(--mut);border-top:1px solid var(--line);display:flex;justify-content:space-between}
+.ov{position:fixed;inset:0;background:#0007;display:flex;align-items:flex-end;justify-content:center}
+.ov>div{background:var(--card);width:min(640px,100%);padding:14px;display:flex;flex-direction:column;gap:8px;border-radius:16px 16px 0 0}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const URL_='https://wbbxlwvxvsynpxmiobfg.supabase.co',KEY='sb_publishable_0QHh-5IBoVPO7CmTZ7_u7A_sBn3YjCW';
+const sb=supabase.createClient(URL_,KEY);
+const root=document.getElementById('app');
+let me,P={},cur=null,view='',U={};
+
+function h(t,p={},...k){const e=document.createElement(t);for(const[a,v]of Object.entries(p)){if(a.startsWith('on'))e[a]=v;else if(a==='class')e.className=v;else e.setAttribute(a,v)}for(const c of k.flat())if(c!=null&&c!==false)e.append(c.nodeType?c:document.createTextNode(c));return e}
+const show=(...n)=>root.replaceChildren(...n);
+const nm=id=>P[id]?.display_name||P[id]?.username||'?';
+const full=id=>nm(id)+(P[id]?.admin_name?` (${P[id].admin_name})`:'');
+const tm=d=>new Date(d).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+
+async function fn(name,body,auth){
+  const hd={'Content-Type':'application/json',apikey:KEY};
+  if(auth){const{data}=await sb.auth.getSession();hd.Authorization='Bearer '+data.session.access_token}
+  try{const r=await fetch(`${URL_}/functions/v1/${name}`,{method:'POST',headers:hd,body:JSON.stringify(body)});return{ok:r.ok,d:await r.json().catch(()=>({}))}}
+  catch{return{ok:false,d:{error:'No connection'}}}
+}
+function sheet(...items){const o=h('div',{class:'ov',onclick:e=>{if(e.target===o)o.remove()}},h('div',{},...items));document.body.append(o);return o}
+
+/* ---------- login ---------- */
+function loginView(msg=''){
+  view='login';
+  const u=h('input',{placeholder:'Username',autocapitalize:'none',autocomplete:'username'}),e=h('div',{class:'err'},msg);
+  const go=async()=>{
+    const name=u.value.trim();if(!name)return;e.textContent='';
+    const{d}=await fn('auth-check',{username:name});
+    if(d.status==='not_found')e.textContent='Username not found';
+    else if(d.status==='inactive')e.textContent='This account is switched off';
+    else if(d.status)passView(name,d.status==='needs_password');
+    else e.textContent=d.error||'Something went wrong';
+  };
+  u.onkeydown=ev=>ev.key==='Enter'&&go();
+  show(h('div',{class:'box'},h('h1',{},'Cousins'),u,h('button',{onclick:go},'Next'),e));
+}
+function passView(name,isNew){
+  const p1=h('input',{type:'password',placeholder:isNew?'Create a password':'Password',autocomplete:isNew?'new-password':'current-password'});
+  const p2=isNew?h('input',{type:'password',placeholder:'Type it again',autocomplete:'new-password'}):null;
+  const e=h('div',{class:'err'});
+  const go=async()=>{
+    e.textContent='';
+    if(isNew&&p1.value!==p2.value)return e.textContent='Passwords don\'t match';
+    const{d}=await fn(isNew?'auth-set-password':'auth-login',{username:name,password:p1.value});
+    if(d.session){await sb.auth.setSession(d.session);boot()}else e.textContent=d.error||'Something went wrong';
+  };
+  p1.onkeydown=ev=>ev.key==='Enter'&&!p2&&go();
+  show(h('div',{class:'box'},h('h1',{},isNew?'Welcome, '+name:'Hi, '+name),isNew&&h('div',{class:'mut'},'First time here. Pick a password (6+ characters).'),p1,p2,h('button',{onclick:go},isNew?'Save & sign in':'Sign in'),e,h('button',{class:'g',onclick:()=>loginView()},'Back')));
+  p1.focus();
+}
+
+/* ---------- boot ---------- */
+let subbed=false;
+async function boot(){
+  const{data:{session}}=await sb.auth.getSession();
+  if(!session)return loginView();
+  const{data}=await sb.from('profiles').select('*').eq('id',session.user.id).maybeSingle();
+  if(!data||!data.is_active){await sb.auth.signOut();return loginView('Account not available')}
+  me=data;
+  if(!me.display_name)return onboard();
+  await loadP();
+  if(!subbed){subbed=true;
+    sb.channel('live')
+      .on('postgres_changes',{event:'*',schema:'public',table:'messages'},()=>cur&&refresh())
+      .on('postgres_changes',{event:'*',schema:'public',table:'message_reads'},()=>cur&&refresh())
+      .on('postgres_changes',{event:'*',schema:'public',table:'conversation_members'},()=>view==='home'&&home())
+      .subscribe();
+    setInterval(()=>cur&&view==='chat'&&refresh(),30000);
+  }
+  home();
+}
+async function loadP(){const{data}=await sb.from('profiles').select('id,username,display_name,admin_name');P=Object.fromEntries((data||[]).map(x=>[x.id,x]))}
+function onboard(){
+  const i=h('input',{placeholder:'Your display name',maxlength:30}),e=h('div',{class:'err'});
+  show(h('div',{class:'box'},h('h1',{},'Pick your name'),h('div',{class:'mut'},'This is what your cousins will see.'),i,h('button',{onclick:async()=>{
+    const v=i.value.trim();if(!v)return;
+    const{error}=await sb.from('profiles').update({display_name:v}).eq('id',me.id);
+    error?e.textContent='Could not save':boot();
+  }},'Continue'),e));
+}
+
+/* ---------- home ---------- */
+async function home(){
+  view='home';cur=null;
+  const list=h('div',{class:'list'},h('div',{class:'mut'},'Loading…'));
+  show(h('header',{},h('h1',{},'Chats'),h('button',{class:'g',onclick:()=>newChat(false)},'+ Chat'),h('button',{class:'g',onclick:()=>newChat(true)},'+ Group'),me.is_admin&&h('button',{class:'g',onclick:adminView},'Admin'),h('button',{class:'g',onclick:settings},'⚙')),list);
+  const{data}=await sb.from('conversation_members').select('conversation_id,user_id,conversations(id,is_group,name)');
+  const by={};
+  for(const r of data||[]){(by[r.conversation_id]??={c:r.conversations,m:[]}).m.push(r.user_id)}
+  const rows=Object.values(by).map(x=>{const o=x.m.find(i=>i!==me.id);return{c:x.c,m:x.m,t:x.c.is_group?x.c.name:nm(o)}});
+  list.replaceChildren(...(rows.length?rows.map(r=>h('div',{class:'row',onclick:()=>openChat(r)},h('b',{},r.t),h('span',{class:'mut'},r.c.is_group?r.m.length+' people':''))):[h('div',{class:'mut',style:'text-align:center;margin-top:30px'},'No chats yet. Tap + Chat to start one.')]));
+}
+function newChat(group){
+  view='new';
+  const q=h('input',{placeholder:'Search by name or username'}),gn=group?h('input',{placeholder:'Group name',maxlength:40}):null,sel=new Set(),list=h('div',{class:'list'}),e=h('div',{class:'err'});
+  const draw=()=>{
+    const s=q.value.toLowerCase();
+    list.replaceChildren(...Object.values(P).filter(p=>p.id!==me.id&&`${p.username} ${p.display_name} ${p.admin_name}`.toLowerCase().includes(s)).map(p=>group
+      ?h('label',{class:'row'},full(p.id)+'  @'+p.username,h('input',{type:'checkbox',checked:sel.has(p.id)?'':null,onchange:ev=>ev.target.checked?sel.add(p.id):sel.delete(p.id)}))
+      :h('div',{class:'row',onclick:async()=>{const{data,error}=await sb.rpc('create_dm',{other:p.id});if(error)e.textContent='Could not start chat';else openChat({c:{id:data,is_group:false},m:[me.id,p.id],t:nm(p.id)})}},full(p.id),h('span',{class:'mut'},'@'+p.username))));
+  };
+  q.oninput=draw;
+  show(h('header',{},h('button',{class:'g',onclick:home},'‹'),h('h1',{},group?'New group':'New chat')),h('div',{class:'bar'},q),group&&h('div',{class:'bar'},gn,h('button',{onclick:async()=>{
+    if(!gn.value.trim()||!sel.size)return e.textContent='Add a name and at least one person';
+    const{data,error}=await sb.rpc('create_group',{group_name:gn.value,member_ids:[...sel]});
+    error?e.textContent='Could not create group':openChat({c:{id:data,is_group:true,name:gn.value},m:[me.id,...sel],t:gn.value});
+  }},'Create')),e,list);
+  draw();
+}
+
+/* ---------- chat ---------- */
+function openChat(r){
+  view='chat';cur={id:r.c.id,group:r.c.is_group,members:r.m,title:r.t,reply:null};
+  const box=h('div',{class:'msgs',id:'msgs'}),rb=h('div',{class:'rb',id:'rb',style:'display:none'});
+  const txt=h('input',{type:'text',placeholder:'Message',maxlength:4000}),
+    ttl=h('select',{title:'Disappear timer'},h('option',{value:''},'⏱ off'),h('option',{value:'300'},'5 min'),h('option',{value:'3600'},'1 hour'),h('option',{value:'86400'},'1 day')),
+    file=h('input',{type:'file',accept:'image/*',style:'display:none'});
+  const send=async(path)=>{
+    const body=txt.value.trim();if(!body&&!path)return;txt.value='';
+    const row={conversation_id:cur.id,sender_id:me.id,body:body||null,image_path:path||null,reply_to:cur.reply?.id||null,ttl_seconds:ttl.value?+ttl.value:null};
+    cur.reply=null;setReply();
+    const{error}=await sb.from('messages').insert(row);
+    if(error)alert('Could not send');
+    refresh();
+  };
+  file.onchange=async()=>{
+    const f=file.files[0];if(!f)return;
+    if(f.size>20*1048576)return alert('Max 20 MB');
+    const path=`${cur.id}/${me.id}/${crypto.randomUUID()}.${(f.name.split('.').pop()||'jpg').toLowerCase()}`;
+    const{error}=await sb.storage.from('chat-images').upload(path,f,{contentType:f.type});
+    error?alert('Upload failed'):send(path);file.value='';
+  };
+  txt.onkeydown=ev=>ev.key==='Enter'&&send();
+  show(h('header',{},h('button',{class:'g',onclick:home},'‹'),h('h1',{},cur.title),cur.group&&h('button',{class:'g',onclick:leave},'Leave')),box,rb,h('div',{class:'bar'},h('button',{class:'g',onclick:()=>file.click()},'📷'),file,txt,ttl,h('button',{onclick:()=>send()},'➤')));
+  refresh();
+}
+function setReply(){const rb=document.getElementById('rb');if(!rb)return;if(!cur.reply){rb.style.display='none';return}rb.style.display='flex';rb.replaceChildren('Replying to '+nm(cur.reply.sender_id)+': '+(cur.reply.body||'📷').slice(0,40),h('button',{class:'g',onclick:()=>{cur.reply=null;setReply()}},'✕'))}
+async function leave(){if(!confirm('Leave this group?'))return;await sb.rpc('leave_conversation',{conv:cur.id});home()}
+async function refresh(){
+  if(!cur||view!=='chat')return;
+  const id=cur.id;
+  const{data:ms}=await sb.from('messages').select('*').eq('conversation_id',id).order('created_at');
+  if(!cur||cur.id!==id)return;
+  const msgs=(ms||[]).filter(m=>new Date(m.delete_at)>new Date());
+  const{data:rd}=msgs.length?await sb.from('message_reads').select('message_id,user_id').in('message_id',msgs.map(m=>m.id)):{data:[]};
+  const reads={};for(const r of rd||[])(reads[r.message_id]??=new Set()).add(r.user_id);
+  const byId=Object.fromEntries(msgs.map(m=>[m.id,m]));
+  const box=document.getElementById('msgs');if(!box)return;
+  const atEnd=box.scrollHeight-box.scrollTop-box.clientHeight<80;
+  box.replaceChildren(...msgs.map(m=>{
+    const mine=m.sender_id===me.id,n=reads[m.id]?.size||0,all=n>=cur.members.length-1;
+    const el=h('div',{class:'m'+(mine?' me':'')},
+      cur.group&&!mine&&h('div',{class:'s'},nm(m.sender_id)),
+      m.reply_to&&byId[m.reply_to]&&h('div',{class:'q'},nm(byId[m.reply_to].sender_id)+': '+(byId[m.reply_to].body||'📷').slice(0,60)),
+      m.image_path&&imgEl(m.image_path),
+      m.body&&h('div',{},m.body),
+      h('div',{class:'t'},[m.kept_by&&'📌 kept by '+nm(m.kept_by)+' · ',m.ttl_seconds&&'⏱ ',tm(m.created_at),mine&&(all?' ✓✓':' ✓')].filter(Boolean).join('')));
+    let tmr;const open=()=>msgMenu(m,mine);
+    el.onpointerdown=()=>{tmr=setTimeout(open,450)};
+    for(const ev of['pointerup','pointerleave','pointermove'])el['on'+ev]=()=>clearTimeout(tmr);
+    el.oncontextmenu=ev=>{ev.preventDefault();open()};
+    return el;
+  }));
+  if(atEnd)box.scrollTop=box.scrollHeight;
+  setReply();
+  sb.rpc('mark_read',{conv:id});
+}
+function imgEl(path){
+  const i=h('img',{alt:''});
+  if(U[path])i.src=U[path];
+  else sb.storage.from('chat-images').createSignedUrl(path,3600).then(({data})=>{if(data){U[path]=data.signedUrl;i.src=data.signedUrl}});
+  return i;
+}
+function msgMenu(m,mine){
+  const o=sheet(
+    h('button',{onclick:()=>{cur.reply=m;o.remove();setReply()}},'Reply'),
+    !m.ttl_seconds&&h('button',{onclick:async()=>{o.remove();const{error}=await sb.rpc('keep_message',{msg:m.id,keep:m.kept_by?false:true});if(error)alert(m.kept_by?'Only the person who kept it can undo':'Could not keep');refresh()}},m.kept_by?'Un-keep':'Keep for 7 days'),
+    mine&&h('button',{class:'d',onclick:async()=>{o.remove();if(m.image_path)await sb.storage.from('chat-images').remove([m.image_path]);await sb.from('messages').delete().eq('id',m.id);refresh()}},'Delete for everyone'),
+    h('button',{class:'g',onclick:()=>o.remove()},'Cancel'));
+}
+
+/* ---------- settings ---------- */
+function settings(){
+  const o=sheet(
+    h('div',{class:'mut'},`Signed in as ${me.username}`),
+    h('button',{onclick:async()=>{const v=prompt('New display name',me.display_name);if(v?.trim()){await sb.from('profiles').update({display_name:v.trim()}).eq('id',me.id);o.remove();boot()}}},'Change display name'),
+    h('button',{onclick:async()=>{const v=prompt('New username (3-20 letters, numbers, _)',me.username);if(v?.trim()){const{error}=await sb.from('profiles').update({username:v.trim()}).eq('id',me.id);if(error)alert('That username is taken or not allowed');else{o.remove();boot()}}}},'Change username'),
+    h('button',{onclick:async()=>{await sb.auth.signOut();location.reload()}},'Log out'),
+    h('button',{class:'d',onclick:async()=>{await sb.auth.signOut({scope:'global'});location.reload()}},'Log out of all devices'),
+    h('button',{class:'g',onclick:()=>o.remove()},'Close'));
+}
+
+/* ---------- admin ---------- */
+async function adminView(){
+  view='admin';
+  const list=h('div',{class:'list'}),e=h('div',{class:'err'});
+  const act=async(b)=>{const{ok,d}=await fn('admin-users',b,true);if(!ok)alert(d.error||'Failed');return{ok,d}};
+  const draw=async()=>{
+    const{data:ps}=await sb.from('profiles').select('*').order('created_at');
+    const{data:ns}=await sb.from('admin_notes').select('*');const N=Object.fromEntries((ns||[]).map(x=>[x.user_id,x.notes]));
+    list.replaceChildren(...(ps||[]).map(p=>h('div',{class:'row',style:'flex-direction:column;align-items:stretch;cursor:default'},
+      h('div',{},h('b',{},p.username),`  ${p.admin_name||''}  `,p.is_admin?'👑 ':'',p.is_active?'':'⛔ off ',p.password_set?'':'🆕 no password yet'),
+      N[p.id]&&h('div',{class:'mut'},N[p.id]),
+      !p.is_admin&&h('div',{style:'display:flex;gap:6px;flex-wrap:wrap;margin-top:6px'},
+        h('button',{class:'g',onclick:async()=>{const u=prompt('Username',p.username);if(u===null)return;const a=prompt('Real name',p.admin_name||'');if(a===null)return;const n=prompt('Notes',N[p.id]||'');if(n===null)return;await act({action:'update',user_id:p.id,username:u,admin_name:a,notes:n});draw()}},'Edit'),
+        h('button',{class:'g',onclick:async()=>{if(confirm('Reset password for '+p.username+'? They get logged out and pick a new one.')){await act({action:'reset_password',user_id:p.id});draw()}}},'Reset password'),
+        h('button',{class:'g',onclick:async()=>{await act({action:p.is_active?'deactivate':'reactivate',user_id:p.id});draw()}},p.is_active?'Deactivate':'Reactivate'),
+        h('button',{class:'g',onclick:async()=>{if(confirm('Delete '+p.username+' and all their messages forever?')){await act({action:'delete',user_id:p.id});draw()}}},'Delete')))));
+  };
+  const an=h('input',{placeholder:'Real name'}),au=h('input',{placeholder:'Username (blank = auto)',autocapitalize:'none'}),nn=h('input',{placeholder:'Notes (only you see these)'});
+  show(h('header',{},h('button',{class:'g',onclick:()=>{loadP();home()}},'‹'),h('h1',{},'Admin')),
+    h('div',{class:'bar',style:'flex-wrap:wrap'},an,au,nn,h('button',{onclick:async()=>{
+      const{ok,d}=await act({action:'create',admin_name:an.value,username:au.value,notes:nn.value});
+      if(ok){e.textContent='';alert('Created! Give them the username: '+d.user.username);an.value=au.value=nn.value='';draw()}
+    }},'Create user')),e,list);
+  draw();
+}
+
+boot();
+</script>
+</body>
+</html>
