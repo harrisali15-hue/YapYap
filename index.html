@@ -65,8 +65,9 @@ img.av{object-fit:cover}
 <body>
 <div id="app"></div>
 <script>
-const VERSION='1.3.0';
+const VERSION='1.3.1';
 const CHANGELOG=[
+{v:'1.3.1',date:'2026-11-08',notes:['Fixed a crash on the chat list when someone in a chat has no visible profile']},
 {v:'1.3.0',date:'2026-11-08',notes:['Polls in groups: open (everyone sees who voted what) or anonymous (the sender reveals results later)','Choose whether votes can be changed or are locked']},
 {v:'1.2.0',date:'2026-11-08',notes:['New look: two-panel layout that fits any screen','Install it as an app from your browser (Add to Home Screen)','Reactions: double-tap for your first favourite, long-press for all five','Your own 5-emoji hotbar in Settings, synced to your account','Emoji keyboard (the 😭 button) with hundreds of emojis','Floating 💀 😭 💅 and confetti 🎉, with soft sounds you can turn off','Typing indicator, profile pictures, swipe right to reply','Group photos, and the group creator can add people later','Tap an image to open it and save it','Read messages disappear after 5 hours unless kept','Changelog lives under the version number in Settings']},
 {v:'1.1.0',date:'2026-11-08',notes:['New two-panel layout with a roomier chat view','Settings is now a full page, and you can change your name and username in the app','Find people by typing their name or username, no full list','Nicer buttons and message bubbles','Pop-ups replaced with in-app forms','Full-width layout that fits any screen, like Instagram DMs','Admin button right on the main screen','Tap an image to open it full screen and save it (on iPhone and iPad it goes to your photos)','Changelog now opens from the version number at the bottom of Settings']},
@@ -93,7 +94,7 @@ async function loadAll(){
   const{data:cm}=await sb.from('conversation_members').select('conversation_id,user_id,conversations(id,is_group,name,image_path,created_by)');
   const by={};for(const r of cm||[])(by[r.conversation_id]=by[r.conversation_id]||{c:r.conversations,uids:[]}).uids.push(r.user_id);
   const ids=[...new Set((cm||[]).map(r=>r.user_id).concat(S.uid))];
-  const{data:ps}=await sb.from('profiles').select('*').in('id',ids);(ps||[]).forEach(setU);
+  const{data:ps}=await sb.from('profiles').select('*').in('id',ids);(ps||[]).forEach(setU);ids.forEach(i=>{const k=K(i);if(!S.users[k])S.users[k]={id:i,username:'unknown',display:'Unknown user',on:false}});
   const old=Object.fromEntries(S.chats.map(c=>[c.id,c]));
   S.chats=Object.values(by).filter(x=>x.c).map(x=>Object.assign(old[x.c.id]||{msgs:[]},{id:x.c.id,group:x.c.is_group,name:x.c.name,img:x.c.image_path?pubUrl(x.c.image_path):null,creator:x.c.created_by,uids:x.uids,members:x.uids.map(K)}));
   await Promise.all(S.chats.map(loadMsgs));
@@ -178,7 +179,7 @@ async function boot(){
   }
 }
 
-const nm=id=>S.users[id].display||S.users[id].username;
+const nm=id=>{const u=S.users[id];return u?(u.display||u.username):'Unknown user'};
 const other=c=>c.members.find(x=>x!=='me');
 const title=c=>c.group?c.name:nm(other(c));
 const tm=d=>d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
@@ -301,7 +302,7 @@ function chatPane(c){
   draw();
   return h('div',{class:'main'},
     h('div',{class:'top'},h('button',{class:'i back',onclick:()=>{S.cur=null;app()}},'‹'),cav(c,38),
-      h('div',{class:'t2'},h('b',{},title(c)),h('small',{},c.group?c.members.map(nm).join(', '):'@'+S.users[other(c)].username)),
+      h('div',{class:'t2'},h('b',{},title(c)),h('small',{},c.group?c.members.map(nm).join(', '):'@'+((S.users[other(c)]||{}).username||'unknown'))),
       c.group&&h('button',{class:'s',onclick:()=>groupInfo(c)},'Group info')),
     box,rb,epBox,h('div',{class:'hb'},...S.hot.map(e=>h('button',{onclick:()=>{txt.value+=e;txt.focus()}},e))),
     h('div',{class:'bar'},btn('📷','Send an image',()=>file.click()),btn('😭','Emoji',toggleEp),c.group&&btn('📊','New poll',()=>newPoll(c)),file,txt,ttl,h('button',{onclick:()=>send()},'Send')));
