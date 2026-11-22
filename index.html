@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Yap</title><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png"><link rel="icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Yap"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#2f78e8"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
 :root{--bg:#f3f6fb;--card:#fff;--ink:#16202e;--mut:#68768a;--acc:#2f78e8;--acc2:#1f5fc8;--mine:#d9e8fd;--line:#e0e7f1;--on:#fff;--sh:0 1px 3px #1f2e4a14;color-scheme:light}
@@ -61,15 +61,23 @@ input:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--ring
 img.av{object-fit:cover}
 .tx{white-space:pre-wrap;word-break:break-word}.tx.big{font-size:40px;line-height:1.2}.tx a{color:inherit;text-decoration:underline}.once{font-weight:600}
 .dsep{align-self:center;color:var(--mut);font-size:12px;margin:10px 0 4px}
-@media(max-width:640px){#app{grid-template-columns:1fr}#app.c .side,#app:not(.c):not(.p) .main{display:none}.i.back{display:grid}}
-@media(max-width:640px){input,select,textarea,.bar textarea{font-size:16px}}.m{-webkit-touch-callout:none}
+@media(max-width:640px),(max-device-width:640px){#app{grid-template-columns:1fr}#app.c .side,#app:not(.c):not(.p) .main{display:none}.i.back{display:grid}}
+@media(max-width:640px),(max-device-width:640px){input,select,textarea,.bar textarea{font-size:16px}}.m{-webkit-touch-callout:none}
+html,body{touch-action:pan-x pan-y;overscroll-behavior:none}
+#app.nos{grid-template-columns:1fr}#app.nos .side{display:none}
+.bar .plus{display:none}.tools{display:flex;gap:4px;align-items:center}
+@media(max-width:640px),(max-device-width:640px){.i.sidebtn,.i.hidebtn{display:none}.bar{flex-wrap:wrap;gap:6px;padding:8px}.bar .plus{display:grid}.tools{display:none}.bar.open .tools{display:flex;flex-basis:100%;order:-1;flex-wrap:wrap}.top{padding:10px}.msgs{padding:12px 10px}.m{max-width:86%}.hb{padding:4px}.pg{padding:12px 12px 40px}}
+@media(max-width:360px),(max-device-width:360px){.top h1{font-size:17px}button.i{width:34px;height:34px;font-size:16px}.top{gap:4px;padding:8px}.row{padding:8px 6px;gap:8px}.m{max-width:92%;font-size:14px}.hb button{padding:2px 6px;font-size:20px}.card{padding:12px}.ov>div{padding:14px}}
+@media(max-width:260px){.top h1{display:none}.msgs{padding:8px 6px}}
 </style>
 </head>
 <body>
 <div id="app"></div>
 <script>
-const VERSION='1.7.0';
+const VERSION='1.7.2';
 const CHANGELOG=[
+{v:'1.7.2',date:'2026-11-14',notes:['Small screens (phones, watches) work like WhatsApp: your chat list fills the screen and tapping a chat opens it full screen','Chat list can be hidden on bigger screens with the « button, and shown again with ☰ in the chat header']},
+{v:'1.7.1',date:'2026-11-14',notes:['Phone layout: photo, view-once, emoji, poll and timer buttons tuck behind a + button so the message box has room','Compact layout for very small screens (folded phones, watches)','Pinch-to-zoom is turned off so it feels like an app']},
 {v:'1.7.0',date:'2026-11-12',notes:['Themes now have a Set button: pick to preview, press Set to keep it','Background colors you can mix with any theme','New emoji: 👺 (also floats up like 💀 😭 💅)','Lighter, faster updates: only the chat that changed is reloaded','Half-typed messages are kept when you open a profile or group tools','Group name changes show in the open chat straight away','Images keep working in chats left open for a long time']},
 {v:'1.6.1',date:'2026-11-11',notes:['The keyboard now stays open after you send a message','Admin panel opens with a loading screen instead of a jumbled flash, and loads faster','If a chat disappears while you are in it (removed or group closed) you go back to your chat list','Typing no longer zooms the page on iPhones','Chat list refreshes when you come back to the app']},
 {v:'1.6.0',date:'2026-11-11',notes:['Now simply called Yap','Find people by typing their full username','Public and private accounts: private accounts approve chat requests first (Settings > Privacy)','Profile view with real name, status, block and report','Group tools: rename, remove people, Close group, and a new owner if the creator leaves','Unread badges, chats sorted by latest message, and last-message time','Admin: reports screen']},
@@ -340,6 +348,7 @@ function usageCard(u){
   const bar=(l,v,max)=>h('div',{},h('div',{style:'display:flex;justify-content:space-between;font-size:13px'},h('span',{},l),h('span',{class:'mut'},(v/1048576).toFixed(1)+' MB of '+Math.round(max/1048576)+' MB')),h('div',{style:'height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin-top:4px'},h('div',{style:'height:100%;width:'+Math.min(100,v/max*100)+'%;background:'+(v/max>.8?'#d64545':'var(--acc)')})));
   return h('div',{class:'card'},h('h2',{style:'margin-top:0'},'Storage (free plan)'),bar('Photos and files',+u.storage,1073741824),bar('Database',+u.db,524288000));
 }
+['gesturestart','gesturechange','gestureend'].forEach(t=>document.addEventListener(t,e=>{e.preventDefault()},{passive:false}));
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){const o=document.querySelectorAll('.ov');if(o.length)o[o.length-1].remove()}});
 const lastT=c=>c.msgs.length?c.msgs[c.msgs.length-1].t.getTime():(c.created?c.created.getTime():0);
 const unreadN=c=>(c.id===S.cur&&document.visibilityState==='visible')?0:c.msgs.filter(m=>m.from!=='me'&&!m.mr).length;
@@ -372,6 +381,8 @@ function reportsCard(rp,ps){
   const who=id=>{const p=(ps||[]).find(x=>x.id===id);return p?(p.admin_name||p.display_name||p.username)+' (@'+p.username+')':'Unknown'};
   return h('div',{class:'card'},h('h2',{style:'margin-top:0'},'Reports'),...rp.map(r=>h('div',{style:'display:flex;flex-direction:column;gap:4px;border-top:1px solid var(--line);padding-top:8px'},h('div',{},h('b',{},who(r.reported_id)),' reported by '+who(r.reporter_id)),r.reason&&h('div',{},r.reason),r.excerpt&&h('div',{class:'mut',style:'white-space:pre-wrap'},r.excerpt),h('div',{class:'acts',style:'justify-content:flex-start'},h('button',{class:'s',onclick:async()=>{await sb.from('reports').update({status:'handled'}).eq('id',r.id);admin('Report marked handled')}},'Mark handled')))));
 }
+try{S.nos=!!localStorage.getItem('yy-nos')}catch(e){}
+function saveNos(){try{localStorage.setItem('yy-nos',S.nos?'1':'')}catch(e){}}
 function toast(t){const e=h('div',{class:'toast'},t);document.body.append(e);setTimeout(()=>e.remove(),2200)}
 function modal(...k){const o=h('div',{class:'ov',onclick:e=>{if(e.target===o)o.remove()}},h('div',{},...k));document.body.append(o);return o}
 function ask(text,label,danger){return new Promise(r=>{const o=modal(h('h3',{},text),h('div',{class:'acts'},h('button',{class:'s',onclick:()=>{o.remove();r(false)}},'Cancel'),h('button',{class:danger?'d':'',onclick:()=>{o.remove();r(true)}},label)))})}
@@ -379,7 +390,7 @@ function ask(text,label,danger){return new Promise(r=>{const o=modal(h('h3',{},t
 function side(){
   const ord=[...S.chats].sort((a,b)=>lastT(b)-lastT(a));
   return h('div',{class:'side'},
-    h('div',{class:'top'},h('h1',{},'Yap'),btn('＋','New chat',()=>newChat(0)),btn('👥','New group',()=>newChat(1)),S.users.me.admin&&btn(S.reqN?'🛡 '+S.reqN:'🛡','Admin panel',()=>admin()),btn('⚙','Settings',()=>settings())),
+    h('div',{class:'top'},h('h1',{},'Yap'),btn('＋','New chat',()=>newChat(0)),btn('👥','New group',()=>newChat(1)),S.users.me.admin&&btn(S.reqN?'🛡 '+S.reqN:'🛡','Admin panel',()=>admin()),btn('⚙','Settings',()=>settings()),S.cur&&h('button',{class:'i hidebtn',title:'Hide chat list','aria-label':'Hide chat list',onclick:()=>{S.nos=true;saveNos();app()}},'«')),
     h('div',{class:'list'},reqBox(),...ord.map(c=>{
       const l=c.msgs[c.msgs.length-1],n=unreadN(c);
       return h('div',{class:'row'+(S.cur===c.id?' on':''),onclick:()=>{S.cur=c.id;app()}},cav(c,44),
@@ -388,7 +399,7 @@ function side(){
     })));
 }
 function app(){
-  applyTheme();let c=S.chats.find(x=>x.id===S.cur);if(!c)S.cur=null;root.className=S.cur?'c':'';
+  applyTheme();let c=S.chats.find(x=>x.id===S.cur);if(!c)S.cur=null;root.className=(S.cur?'c':'')+(S.nos&&S.cur?' nos':'');
   root.replaceChildren(side(),c?chatPane(c):h('div',{class:'main'},h('div',{class:'empty'},h('div',{class:'big'},'Yap'),h('div',{},'Pick a chat on the left, or start a new one.'),h('button',{onclick:()=>newChat(0)},'New chat'))));
 }
 
@@ -415,11 +426,11 @@ function chatPane(c){
   file.onchange=()=>{const f=file.files[0];file.value='';sendFile(f)};
   draw();
   return h('div',{class:'main',ondragover:e=>{e.preventDefault()},ondrop:e=>{e.preventDefault();const f=e.dataTransfer&&e.dataTransfer.files[0];if(f&&f.type.indexOf('image/')===0)sendFile(f)}},
-    h('div',{class:'top'},h('button',{class:'i back',onclick:()=>{S.cur=null;app()}},'‹'),cav(c,38),
+    h('div',{class:'top'},h('button',{class:'i back',onclick:()=>{S.cur=null;app()}},'‹'),h('button',{class:'i sidebtn',title:'Show or hide chat list','aria-label':'Show or hide chat list',onclick:()=>{S.nos=!S.nos;saveNos();app()}},'☰'),cav(c,38),
       h('div',{class:'t2',style:'cursor:pointer',onclick:()=>{if(c.group)groupInfo(c);else profileView(other(c))}},h('b',{id:'ct'},title(c)),h('small',{id:'cs'},c.group?c.members.map(nm).join(', '):((S.users[other(c)]||{}).status||'@'+((S.users[other(c)]||{}).username||'unknown')))),
       c.group&&h('button',{class:'s',onclick:()=>groupInfo(c)},'Group info')),
     box,rb,epBox,h('div',{class:'hb'},...S.hot.map(e=>h('button',{onclick:()=>{txt.value+=e;txt.focus()}},e))),
-    h('div',{class:'bar'},btn('📷','Send an image',()=>file.click()),onceBtn,btn('😭','Emoji',toggleEp),c.group&&btn('📊','New poll',()=>newPoll(c)),file,txt,ttl,h('button',{onpointerdown:e=>{e.preventDefault()},onclick:()=>{send();txt.focus()}},'Send')));
+    h('div',{class:'bar',id:'bar'},h('button',{class:'i plus',title:'More','aria-label':'More',onpointerdown:e=>{e.preventDefault()},onclick:()=>{document.getElementById('bar').classList.toggle('open')}},'＋'),h('div',{class:'tools'},btn('📷','Send an image',()=>file.click()),onceBtn,btn('😭','Emoji',toggleEp),c.group&&btn('📊','New poll',()=>newPoll(c)),ttl),file,txt,h('button',{onpointerdown:e=>{e.preventDefault()},onclick:()=>{send();txt.focus()}},'Send')));
 }
 function bubble(m,c,onReply,draw){
   const mine=m.from==='me',rep=m.reply&&c.msgs.find(x=>x.id===m.reply);
